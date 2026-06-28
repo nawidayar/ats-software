@@ -1,14 +1,15 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import LogoutButton from "@/components/LogoutButton";
 
-const MODULES = [
-  "Dashboard",
-  "Products",
-  "Sales",
-  "Customers",
-  "Purchases",
-  "Expenses",
+const MODULES: { name: string; href: string | null }[] = [
+  { name: "Dashboard", href: null },
+  { name: "Products", href: "/products" },
+  { name: "Sales", href: null },
+  { name: "Customers", href: null },
+  { name: "Purchases", href: null },
+  { name: "Expenses", href: null },
 ];
 
 export default async function Home() {
@@ -62,15 +63,26 @@ export default async function Home() {
         </p>
 
         <div className="mt-8 grid grid-cols-2 gap-4">
-          {MODULES.map((name) => (
-            <div
-              key={name}
-              className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
-            >
-              <p className="text-base font-semibold text-brand">{name}</p>
-              <p className="mt-1 text-xs text-gray-400">Coming soon</p>
-            </div>
-          ))}
+          {MODULES.map((mod) =>
+            mod.href ? (
+              <Link
+                key={mod.name}
+                href={mod.href}
+                className="rounded-2xl border border-brand/20 bg-white p-5 shadow-sm transition-colors hover:bg-brand/5"
+              >
+                <p className="text-base font-semibold text-brand">{mod.name}</p>
+                <p className="mt-1 text-xs text-gray-500">Open →</p>
+              </Link>
+            ) : (
+              <div
+                key={mod.name}
+                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+              >
+                <p className="text-base font-semibold text-brand">{mod.name}</p>
+                <p className="mt-1 text-xs text-gray-400">Coming soon</p>
+              </div>
+            ),
+          )}
         </div>
       </main>
     </div>
