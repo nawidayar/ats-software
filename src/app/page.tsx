@@ -6,7 +6,7 @@ import LogoutButton from "@/components/LogoutButton";
 const MODULES: { name: string; href: string | null }[] = [
   { name: "Dashboard", href: null },
   { name: "Products", href: "/products" },
-  { name: "Sales", href: null },
+  { name: "Sales", href: "/sales" },
   { name: "Customers", href: null },
   { name: "Purchases", href: null },
   { name: "Expenses", href: null },
