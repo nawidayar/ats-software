@@ -264,6 +264,8 @@ export default async function Dashboard({
     { name: "Expenses", href: "/expenses" },
     { name: "Purchases", href: "/purchases" },
     { name: "Receivables", href: "/receivables" },
+    { name: "Payables", href: "/payables" },
+    { name: "Assets", href: "/assets" },
   ];
 
   return (
