@@ -8,7 +8,7 @@ const MODULES: { name: string; href: string | null }[] = [
   { name: "Products", href: "/products" },
   { name: "Sales", href: "/sales" },
   { name: "Customers", href: "/customers" },
-  { name: "Purchases", href: null },
+  { name: "Purchases", href: "/purchases" },
   { name: "Expenses", href: "/expenses" },
 ];
 
