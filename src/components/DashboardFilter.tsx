@@ -40,58 +40,57 @@ export default function DashboardFilter({
   const active = (r: { from: string; to: string }) =>
     r.from === from && r.to === to;
 
-  const quick = "rounded-lg px-3 py-2 text-sm font-medium transition-colors";
-  const quickOn = "bg-brand text-white";
-  const quickOff =
-    "bg-white text-brand border border-brand/20 hover:bg-brand/5";
+  const seg = "rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors";
+  const segOn = "bg-brand text-white shadow-sm";
+  const segOff = "text-gray-500 hover:text-brand";
+  const dateBox =
+    "rounded-xl border border-gray-200 bg-white px-4 py-2 shadow-sm";
   const dateInput =
-    "rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30";
+    "block text-sm font-medium text-gray-800 outline-none [color-scheme:light]";
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-brand/60">
-            From
-          </label>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => go(e.target.value, to)}
-            className={dateInput}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-brand/60">
-            To
-          </label>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => go(from, e.target.value)}
-            className={dateInput}
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => go(p.thisMonth.from, p.thisMonth.to)}
-            className={`${quick} ${active(p.thisMonth) ? quickOn : quickOff}`}
-          >
-            This Month
-          </button>
-          <button
-            onClick={() => go(p.lastMonth.from, p.lastMonth.to)}
-            className={`${quick} ${active(p.lastMonth) ? quickOn : quickOff}`}
-          >
-            Last Month
-          </button>
-          <button
-            onClick={() => go(p.thisYear.from, p.thisYear.to)}
-            className={`${quick} ${active(p.thisYear) ? quickOn : quickOff}`}
-          >
-            This Year
-          </button>
-        </div>
+    <div className="flex flex-wrap items-stretch gap-3">
+      <div className={dateBox}>
+        <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+          From
+        </label>
+        <input
+          type="date"
+          value={from}
+          onChange={(e) => go(e.target.value, to)}
+          className={dateInput}
+        />
+      </div>
+      <div className={dateBox}>
+        <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+          To
+        </label>
+        <input
+          type="date"
+          value={to}
+          onChange={(e) => go(from, e.target.value)}
+          className={dateInput}
+        />
+      </div>
+      <div className="flex items-center gap-1 rounded-2xl border border-gray-200 bg-white p-1 shadow-sm">
+        <button
+          onClick={() => go(p.thisMonth.from, p.thisMonth.to)}
+          className={`${seg} ${active(p.thisMonth) ? segOn : segOff}`}
+        >
+          This Month
+        </button>
+        <button
+          onClick={() => go(p.lastMonth.from, p.lastMonth.to)}
+          className={`${seg} ${active(p.lastMonth) ? segOn : segOff}`}
+        >
+          Last Month
+        </button>
+        <button
+          onClick={() => go(p.thisYear.from, p.thisYear.to)}
+          className={`${seg} ${active(p.thisYear) ? segOn : segOff}`}
+        >
+          This Year
+        </button>
       </div>
     </div>
   );
