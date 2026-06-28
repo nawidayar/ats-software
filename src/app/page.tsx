@@ -9,7 +9,7 @@ const MODULES: { name: string; href: string | null }[] = [
   { name: "Sales", href: "/sales" },
   { name: "Customers", href: "/customers" },
   { name: "Purchases", href: null },
-  { name: "Expenses", href: null },
+  { name: "Expenses", href: "/expenses" },
 ];
 
 export default async function Home() {
