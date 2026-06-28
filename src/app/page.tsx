@@ -263,6 +263,7 @@ export default async function Dashboard({
     { name: "Customers", href: "/customers" },
     { name: "Expenses", href: "/expenses" },
     { name: "Purchases", href: "/purchases" },
+    { name: "Receivables", href: "/receivables" },
   ];
 
   return (
@@ -502,7 +503,7 @@ export default async function Dashboard({
         </div>
 
         {/* Quick links to the modules */}
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {modules.map((m) => (
             <Link
               key={m.name}
