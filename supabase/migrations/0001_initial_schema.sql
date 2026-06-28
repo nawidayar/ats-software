@@ -110,20 +110,28 @@ create table if not exists public.customers (
 -- unit_cost = the cost of one unit AT THE TIME OF SALE. We store it on the
 -- sale so cost-of-goods stays correct even if the product's cost changes
 -- later. revenue / cogs / gross_profit / balance_due are auto-calculated.
+--
+-- currency = the currency this sale was made in (AFN / USD / RMB).
+-- exchange_rate_to_afn = how many AFN one unit of that currency is worth on
+-- the day of the sale (AFN itself = 1). The "_afn" columns convert every
+-- figure into AFN so the dashboard can total mixed-currency sales together.
 create table if not exists public.sales (
-  id             uuid primary key default gen_random_uuid(),
-  business_id    uuid not null references public.businesses (id) on delete cascade,
-  date           date not null default current_date,
-  invoice_number text,
-  customer_id    uuid references public.customers (id) on delete set null,
-  product_id     uuid references public.products (id) on delete set null,
-  quantity       numeric(14, 2) default 0,
-  unit_price     numeric(14, 2) default 0,
-  unit_cost      numeric(14, 2) default 0,
-  payment_status text check (payment_status in ('Paid', 'Credit', 'Partial')),
-  amount_paid    numeric(14, 2) default 0,
+  id                   uuid primary key default gen_random_uuid(),
+  business_id          uuid not null references public.businesses (id) on delete cascade,
+  date                 date not null default current_date,
+  invoice_number       text,
+  customer_id          uuid references public.customers (id) on delete set null,
+  product_id           uuid references public.products (id) on delete set null,
+  quantity             numeric(14, 2) default 0,
+  unit_price           numeric(14, 2) default 0,
+  unit_cost            numeric(14, 2) default 0,
+  payment_status       text check (payment_status in ('Paid', 'Credit', 'Partial')),
+  amount_paid          numeric(14, 2) default 0,
+  currency             text not null default 'AFN'
+                         check (currency in ('AFN', 'USD', 'RMB')),
+  exchange_rate_to_afn numeric(14, 4) not null default 1,
 
-  -- auto-calculated columns:
+  -- auto-calculated columns (in the sale's own currency):
   revenue      numeric(14, 2) generated always as
                  (coalesce(quantity, 0) * coalesce(unit_price, 0)) stored,
   cogs         numeric(14, 2) generated always as
@@ -134,6 +142,22 @@ create table if not exists public.sales (
   balance_due  numeric(14, 2) generated always as
                  (coalesce(quantity, 0) * coalesce(unit_price, 0)
                   - coalesce(amount_paid, 0)) stored,
+
+  -- same figures converted into AFN (for combined reporting):
+  revenue_afn      numeric(16, 2) generated always as
+                     (coalesce(quantity, 0) * coalesce(unit_price, 0)
+                      * coalesce(exchange_rate_to_afn, 1)) stored,
+  cogs_afn         numeric(16, 2) generated always as
+                     (coalesce(quantity, 0) * coalesce(unit_cost, 0)
+                      * coalesce(exchange_rate_to_afn, 1)) stored,
+  gross_profit_afn numeric(16, 2) generated always as
+                     ((coalesce(quantity, 0) * coalesce(unit_price, 0)
+                       - coalesce(quantity, 0) * coalesce(unit_cost, 0))
+                      * coalesce(exchange_rate_to_afn, 1)) stored,
+  balance_due_afn  numeric(16, 2) generated always as
+                     ((coalesce(quantity, 0) * coalesce(unit_price, 0)
+                       - coalesce(amount_paid, 0))
+                      * coalesce(exchange_rate_to_afn, 1)) stored,
 
   created_at   timestamptz not null default now()
 );
@@ -173,16 +197,23 @@ create table if not exists public.purchases (
 -- ----------------------------------------------------------------------------
 -- 6. EXPENSES
 -- ----------------------------------------------------------------------------
+-- currency / exchange_rate_to_afn work the same way as on sales: the expense
+-- can be recorded in AFN, USD or RMB, and amount_afn converts it to AFN.
 create table if not exists public.expenses (
-  id          uuid primary key default gen_random_uuid(),
-  business_id uuid not null references public.businesses (id) on delete cascade,
-  date        date not null default current_date,
-  category    text,
-  description text,
-  quantity    numeric(14, 2),
-  unit_cost   numeric(14, 2),
-  amount      numeric(14, 2),
-  created_at  timestamptz not null default now()
+  id                   uuid primary key default gen_random_uuid(),
+  business_id          uuid not null references public.businesses (id) on delete cascade,
+  date                 date not null default current_date,
+  category             text,
+  description          text,
+  quantity             numeric(14, 2),
+  unit_cost            numeric(14, 2),
+  amount               numeric(14, 2),
+  currency             text not null default 'AFN'
+                         check (currency in ('AFN', 'USD', 'RMB')),
+  exchange_rate_to_afn numeric(14, 4) not null default 1,
+  amount_afn           numeric(16, 2) generated always as
+                         (coalesce(amount, 0) * coalesce(exchange_rate_to_afn, 1)) stored,
+  created_at           timestamptz not null default now()
 );
 
 
