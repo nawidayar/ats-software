@@ -27,7 +27,7 @@ export default async function PurchasesPage() {
         supabase
           .from("purchases")
           .select(
-            "id, date, kind, shipment_number, supplier, quantity, usd_afn_rate, total_landed_cost_afn, landed_cost_per_unit_afn, products(name, sku)",
+            "id, date, kind, shipment_number, supplier, product_id, quantity, product_cost_usd, china_inland_usd, freight_usd, usd_afn_rate, total_landed_cost_afn, landed_cost_per_unit_afn, products(name, sku)",
           )
           .order("date", { ascending: false })
           .order("created_at", { ascending: false }),

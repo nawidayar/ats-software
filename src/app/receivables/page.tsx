@@ -32,7 +32,7 @@ export default async function ReceivablesPage() {
         supabase
           .from("receivables")
           .select(
-            "id, date, invoice, type, amount_due, amount_received, balance, status, customers(name)",
+            "id, date, customer_id, invoice, type, amount_due, amount_received, balance, status, customers(name)",
           )
           .order("date", { ascending: false })
           .order("created_at", { ascending: false }),

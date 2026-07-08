@@ -40,7 +40,10 @@ async function businessId(supabase: Awaited<ReturnType<typeof createClient>>) {
   return { id: profile.business_id as string };
 }
 
-export async function addPayable(
+// Saves a payable. If the form carries an "id" we UPDATE (edit / correct);
+// otherwise we INSERT a new one. The status is always recalculated from the
+// amounts so the "what I owe" totals stay correct.
+export async function savePayable(
   _prevState: PayableState,
   formData: FormData,
 ): Promise<PayableState> {
@@ -58,8 +61,7 @@ export async function addPayable(
   const date =
     toText(formData.get("date")) ?? new Date().toISOString().slice(0, 10);
 
-  const { error } = await supabase.from("payables").insert({
-    business_id: biz.id,
+  const fields = {
     date,
     supplier_payee: toText(formData.get("supplier_payee")),
     reference: toText(formData.get("reference")),
@@ -67,8 +69,22 @@ export async function addPayable(
     amount_owed: amountOwed,
     amount_paid: amountPaid,
     status: statusFor(amountOwed, amountPaid),
-  });
-  if (error) return { error: error.message };
+  };
+
+  const id = toText(formData.get("id"));
+
+  if (id) {
+    const { error } = await supabase
+      .from("payables")
+      .update(fields)
+      .eq("id", id);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("payables")
+      .insert({ business_id: biz.id, ...fields });
+    if (error) return { error: error.message };
+  }
 
   revalidatePath("/payables");
   return { success: true };

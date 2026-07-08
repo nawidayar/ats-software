@@ -19,6 +19,23 @@ function toText(value: FormDataEntryValue | null): string | null {
   return text === "" ? null : text;
 }
 
+// Reads the live stock for one product (0 if it can't be read).
+async function stockOf(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  productId: string,
+): Promise<number> {
+  const { data } = await supabase
+    .from("products")
+    .select("current_stock")
+    .eq("id", productId)
+    .single();
+  return Number(data?.current_stock ?? 0);
+}
+
+// Saves a purchase. If the form carries an "id" we UPDATE an existing purchase
+// (editing / correcting it) and carefully adjust product stock so the count
+// stays right; otherwise we INSERT a new purchase and add its quantity to
+// stock. Kept as recordPurchase so existing imports keep working.
 export async function recordPurchase(
   _prevState: RecordPurchaseState,
   formData: FormData,
@@ -84,8 +101,13 @@ export async function recordPurchase(
     usdAfnRate = 1;
   }
 
-  const { error: insertError } = await supabase.from("purchases").insert({
-    business_id: profile.business_id,
+  // The per-unit landed cost this purchase implies (used to refresh the
+  // product's cost so future sales use the latest cost).
+  const totalLandedAfn =
+    (productCostUsd + chinaInlandUsd + freightUsd) * usdAfnRate;
+  const perUnitAfn = quantity > 0 ? totalLandedAfn / quantity : 0;
+
+  const purchaseFields = {
     date,
     kind,
     shipment_number: shipmentNumber,
@@ -96,28 +118,74 @@ export async function recordPurchase(
     china_inland_usd: chinaInlandUsd,
     freight_usd: freightUsd,
     usd_afn_rate: usdAfnRate,
-  });
-  if (insertError) return { error: insertError.message };
+  };
 
-  // Grow the product's stock by what we just bought, and refresh its landed
-  // cost so future sales use the latest per-unit cost from this purchase.
-  const totalLandedAfn =
-    (productCostUsd + chinaInlandUsd + freightUsd) * usdAfnRate;
-  const perUnitAfn = quantity > 0 ? totalLandedAfn / quantity : 0;
+  const id = toText(formData.get("id"));
 
-  const { data: product } = await supabase
-    .from("products")
-    .select("current_stock")
-    .eq("id", productId)
-    .single();
+  if (id) {
+    // ----- EDITING an existing purchase -----
+    // First read what the purchase looked like BEFORE the edit so we can undo
+    // its old effect on stock, then apply the new one.
+    const { data: old } = await supabase
+      .from("purchases")
+      .select("product_id, quantity")
+      .eq("id", id)
+      .single();
+    if (!old) return { error: "That purchase could not be found." };
 
-  const newStock = Number(product?.current_stock ?? 0) + quantity;
+    const oldProductId = String(old.product_id);
+    const oldQty = Number(old.quantity) || 0;
 
-  const { error: updateError } = await supabase
-    .from("products")
-    .update({ current_stock: newStock, landed_cost_afn: perUnitAfn })
-    .eq("id", productId);
-  if (updateError) return { error: updateError.message };
+    const { error: updateError } = await supabase
+      .from("purchases")
+      .update(purchaseFields)
+      .eq("id", id);
+    if (updateError) return { error: updateError.message };
+
+    if (oldProductId === productId) {
+      // Same product: adjust stock by the difference in quantity.
+      const current = await stockOf(supabase, productId);
+      const newStock = current - oldQty + quantity;
+      const { error: e } = await supabase
+        .from("products")
+        .update({ current_stock: newStock, landed_cost_afn: perUnitAfn })
+        .eq("id", productId);
+      if (e) return { error: e.message };
+    } else {
+      // Product changed: remove the old quantity from the old product, and add
+      // the new quantity to the new product.
+      const oldCurrent = await stockOf(supabase, oldProductId);
+      await supabase
+        .from("products")
+        .update({ current_stock: oldCurrent - oldQty })
+        .eq("id", oldProductId);
+
+      const newCurrent = await stockOf(supabase, productId);
+      const { error: e } = await supabase
+        .from("products")
+        .update({
+          current_stock: newCurrent + quantity,
+          landed_cost_afn: perUnitAfn,
+        })
+        .eq("id", productId);
+      if (e) return { error: e.message };
+    }
+  } else {
+    // ----- ADDING a new purchase -----
+    const { error: insertError } = await supabase
+      .from("purchases")
+      .insert({ business_id: profile.business_id, ...purchaseFields });
+    if (insertError) return { error: insertError.message };
+
+    // Grow the product's stock by what we just bought, and refresh its landed
+    // cost so future sales use the latest per-unit cost from this purchase.
+    const current = await stockOf(supabase, productId);
+    const { error: updateError } = await supabase
+      .from("products")
+      .update({ current_stock: current + quantity, landed_cost_afn: perUnitAfn })
+      .eq("id", productId);
+    if (updateError) return { error: updateError.message };
+  }
 
   revalidatePath("/purchases");
   revalidatePath("/products");

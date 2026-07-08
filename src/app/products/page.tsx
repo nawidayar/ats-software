@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import AddProductForm from "@/components/AddProductForm";
-
-const LOW_STOCK_THRESHOLD = 10;
+import ProductsManager, { type ProductRow } from "@/components/ProductsManager";
 
 function afn(n: number): string {
   return `${Math.round(n).toLocaleString("en-US")} AFN`;
@@ -14,20 +12,9 @@ function num(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-type Product = {
-  id: string;
-  sku: string | null;
-  name: string | null;
-  category: string | null;
-  type: string | null;
-  landed_cost_afn: number | null;
-  selling_price: number | null;
-  current_stock: number | null;
-};
-
 export default async function ProductsPage() {
   let user = null;
-  let products: Product[] = [];
+  let products: ProductRow[] = [];
 
   try {
     const supabase = await createClient();
@@ -40,10 +27,10 @@ export default async function ProductsPage() {
       const { data } = await supabase
         .from("products")
         .select(
-          "id, sku, name, category, type, landed_cost_afn, selling_price, current_stock",
+          "id, sku, name, category, supplier, type, landed_cost_afn, margin_percent, selling_price, opening_quantity, current_stock",
         )
         .order("created_at", { ascending: false });
-      products = (data ?? []) as Product[];
+      products = (data ?? []) as ProductRow[];
     }
   } catch {
     // If Supabase isn't configured, fall through to the login redirect below.
@@ -88,95 +75,9 @@ export default async function ProductsPage() {
           </div>
         </div>
 
-        {/* Add product */}
+        {/* Add / edit products + list */}
         <div className="mt-6">
-          <AddProductForm />
-        </div>
-
-        {/* Table */}
-        <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          {products.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm text-gray-500">
-              No products yet. Tap “Add Product” to create your first one.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="bg-brand text-white">
-                  <tr>
-                    <th className="whitespace-nowrap px-4 py-3 font-semibold">
-                      SKU
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 font-semibold">
-                      Name
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 font-semibold">
-                      Category
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 font-semibold">
-                      Type
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">
-                      Landed cost
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">
-                      Selling price
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">
-                      Stock
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">
-                      Stock value
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {products.map((p) => {
-                    const stock = num(p.current_stock);
-                    const isLow = stock < LOW_STOCK_THRESHOLD;
-                    const stockValue = stock * num(p.landed_cost_afn);
-                    return (
-                      <tr key={p.id} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap px-4 py-3 text-gray-700">
-                          {p.sku ?? "—"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-900">
-                          {p.name ?? "—"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-gray-700">
-                          {p.category ?? "—"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-gray-700">
-                          {p.type ?? "—"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-right text-gray-700">
-                          {afn(num(p.landed_cost_afn))}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-right text-gray-700">
-                          {afn(num(p.selling_price))}
-                        </td>
-                        <td
-                          className={`whitespace-nowrap px-4 py-3 text-right font-semibold ${
-                            isLow ? "text-red-600" : "text-gray-900"
-                          }`}
-                        >
-                          {stock.toLocaleString("en-US")}
-                          {isLow && (
-                            <span className="ml-1 text-xs font-normal">
-                              (low)
-                            </span>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-right text-gray-700">
-                          {afn(stockValue)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <ProductsManager products={products} />
         </div>
       </main>
     </div>

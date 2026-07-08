@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import {
-  addPayable,
+  savePayable,
   recordPayablePayment,
   type PayableState,
 } from "@/app/payables/actions";
@@ -92,20 +92,27 @@ export default function PayablesManager({
 }: {
   payables: PayableRow[];
 }) {
-  const [open, setOpen] = useState(false);
-  const [state, formAction, pending] = useActionState(addPayable, initialState);
+  const [state, formAction, pending] = useActionState(savePayable, initialState);
+  // mode: null = no form, "add" = new, otherwise a payable id = edit
+  const [mode, setMode] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
-    if (state.success) setOpen(false);
+    if (state.success) setMode(null);
   }, [state]);
+
+  const editing =
+    mode && mode !== "add"
+      ? (payables.find((p) => p.id === mode) ?? null)
+      : null;
+  const showForm = mode !== null;
 
   return (
     <div>
-      {!open ? (
+      {!showForm ? (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => setMode("add")}
           className="w-full rounded-xl bg-brand py-3.5 text-base font-semibold text-white transition-colors hover:bg-brand-dark sm:w-auto sm:px-6"
         >
           + Add Payable
@@ -113,21 +120,28 @@ export default function PayablesManager({
       ) : (
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-brand">Add Payable</h2>
+            <h2 className="text-lg font-semibold text-brand">
+              {editing ? "Edit Payable" : "Add Payable"}
+            </h2>
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => setMode(null)}
               className="text-sm font-medium text-gray-500 hover:text-gray-800"
             >
               Cancel
             </button>
           </div>
 
-          <form key={open ? "open" : "closed"} action={formAction} className="space-y-4">
+          <form key={mode} action={formAction} className="space-y-4">
+            {editing && (
+              <input type="hidden" name="id" defaultValue={editing.id} />
+            )}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Supplier / payee</label>
                 <input
                   name="supplier_payee"
+                  defaultValue={editing?.supplier_payee ?? ""}
                   className={inputClass}
                   placeholder="Who you owe"
                 />
@@ -137,7 +151,7 @@ export default function PayablesManager({
                 <input
                   name="date"
                   type="date"
-                  defaultValue={today}
+                  defaultValue={editing?.date ?? today}
                   className={inputClass}
                 />
               </div>
@@ -146,13 +160,19 @@ export default function PayablesManager({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Reference</label>
-                <input name="reference" className={inputClass} placeholder="Optional" />
+                <input
+                  name="reference"
+                  defaultValue={editing?.reference ?? ""}
+                  className={inputClass}
+                  placeholder="Optional"
+                />
               </div>
               <div>
                 <label className={labelClass}>Type</label>
                 <input
                   name="type"
                   list="payable-types"
+                  defaultValue={editing?.type ?? ""}
                   className={inputClass}
                   placeholder="e.g. Supplier"
                 />
@@ -175,6 +195,7 @@ export default function PayablesManager({
                   step="0.01"
                   min="0"
                   required
+                  defaultValue={editing?.amount_owed ?? ""}
                   className={inputClass}
                 />
               </div>
@@ -185,7 +206,7 @@ export default function PayablesManager({
                   type="number"
                   step="0.01"
                   min="0"
-                  defaultValue="0"
+                  defaultValue={editing?.amount_paid ?? 0}
                   className={inputClass}
                 />
               </div>
@@ -256,13 +277,21 @@ export default function PayablesManager({
                         {afn(balance)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
-                        {balance > 0 ? (
-                          <RowPayment id={p.id} />
-                        ) : (
-                          <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
-                            Paid
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {balance > 0 ? (
+                            <RowPayment id={p.id} />
+                          ) : (
+                            <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                              Paid
+                            </span>
+                          )}
+                          <button
+                            onClick={() => setMode(p.id)}
+                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                          >
+                            Edit
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

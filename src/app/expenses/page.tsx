@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import AddExpenseForm from "@/components/AddExpenseForm";
+import ExpensesManager, { type ExpenseRow } from "@/components/ExpensesManager";
 
 function afn(n: number): string {
   return `${Math.round(n).toLocaleString("en-US")} AFN`;
@@ -12,17 +12,9 @@ function num(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-type Expense = {
-  id: string;
-  date: string | null;
-  category: string | null;
-  description: string | null;
-  amount: number | null;
-};
-
 export default async function ExpensesPage() {
   let user = null;
-  let expenses: Expense[] = [];
+  let expenses: ExpenseRow[] = [];
 
   try {
     const supabase = await createClient();
@@ -37,7 +29,7 @@ export default async function ExpensesPage() {
         .select("id, date, category, description, amount")
         .order("date", { ascending: false })
         .order("created_at", { ascending: false });
-      expenses = (data ?? []) as Expense[];
+      expenses = (data ?? []) as ExpenseRow[];
     }
   } catch {
     // If Supabase isn't configured, fall through to the login redirect below.
@@ -82,54 +74,7 @@ export default async function ExpensesPage() {
         </div>
 
         <div className="mt-6">
-          <AddExpenseForm />
-        </div>
-
-        <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          {expenses.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm text-gray-500">
-              No expenses yet. Tap “Add Expense” to record your first one.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="bg-brand text-white">
-                  <tr>
-                    <th className="whitespace-nowrap px-4 py-3 font-semibold">
-                      Date
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 font-semibold">
-                      Category
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 font-semibold">
-                      Description
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {expenses.map((e) => (
-                    <tr key={e.id} className="hover:bg-gray-50">
-                      <td className="whitespace-nowrap px-4 py-3 text-gray-700">
-                        {e.date ?? "—"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-gray-700">
-                        {e.category ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {e.description ?? "—"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-gray-900">
-                        {afn(num(e.amount))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <ExpensesManager expenses={expenses} />
         </div>
       </main>
     </div>

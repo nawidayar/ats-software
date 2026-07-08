@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import {
-  addReceivable,
+  saveReceivable,
   recordReceivablePayment,
   type ReceivableState,
 } from "@/app/receivables/actions";
@@ -12,6 +12,7 @@ export type CustomerOption = { id: string; name: string | null };
 export type ReceivableRow = {
   id: string;
   date: string | null;
+  customer_id: string | null;
   invoice: string | null;
   type: string | null;
   amount_due: number | null;
@@ -96,23 +97,30 @@ export default function ReceivablesManager({
   receivables: ReceivableRow[];
   customers: CustomerOption[];
 }) {
-  const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(
-    addReceivable,
+    saveReceivable,
     initialState,
   );
+  // mode: null = no form, "add" = new, otherwise a receivable id = edit
+  const [mode, setMode] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
-    if (state.success) setOpen(false);
+    if (state.success) setMode(null);
   }, [state]);
+
+  const editing =
+    mode && mode !== "add"
+      ? (receivables.find((r) => r.id === mode) ?? null)
+      : null;
+  const showForm = mode !== null;
 
   return (
     <div>
-      {!open ? (
+      {!showForm ? (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => setMode("add")}
           className="w-full rounded-xl bg-brand py-3.5 text-base font-semibold text-white transition-colors hover:bg-brand-dark sm:w-auto sm:px-6"
         >
           + Add Receivable
@@ -120,20 +128,30 @@ export default function ReceivablesManager({
       ) : (
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-brand">Add Receivable</h2>
+            <h2 className="text-lg font-semibold text-brand">
+              {editing ? "Edit Receivable" : "Add Receivable"}
+            </h2>
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => setMode(null)}
               className="text-sm font-medium text-gray-500 hover:text-gray-800"
             >
               Cancel
             </button>
           </div>
 
-          <form key={open ? "open" : "closed"} action={formAction} className="space-y-4">
+          <form key={mode} action={formAction} className="space-y-4">
+            {editing && (
+              <input type="hidden" name="id" defaultValue={editing.id} />
+            )}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Customer</label>
-                <select name="customer_id" className={inputClass} defaultValue="">
+                <select
+                  name="customer_id"
+                  className={inputClass}
+                  defaultValue={editing?.customer_id ?? ""}
+                >
                   <option value="">— None —</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -147,7 +165,7 @@ export default function ReceivablesManager({
                 <input
                   name="date"
                   type="date"
-                  defaultValue={today}
+                  defaultValue={editing?.date ?? today}
                   className={inputClass}
                 />
               </div>
@@ -156,11 +174,20 @@ export default function ReceivablesManager({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Reference / invoice</label>
-                <input name="invoice" className={inputClass} placeholder="Optional" />
+                <input
+                  name="invoice"
+                  defaultValue={editing?.invoice ?? ""}
+                  className={inputClass}
+                  placeholder="Optional"
+                />
               </div>
               <div>
                 <label className={labelClass}>Type</label>
-                <select name="type" className={inputClass} defaultValue="Credit Sale">
+                <select
+                  name="type"
+                  className={inputClass}
+                  defaultValue={editing?.type ?? "Credit Sale"}
+                >
                   <option value="Credit Sale">Credit Sale</option>
                   <option value="Refund">Refund</option>
                   <option value="Exchange">Exchange</option>
@@ -178,6 +205,7 @@ export default function ReceivablesManager({
                   step="0.01"
                   min="0"
                   required
+                  defaultValue={editing?.amount_due ?? ""}
                   className={inputClass}
                 />
               </div>
@@ -188,7 +216,7 @@ export default function ReceivablesManager({
                   type="number"
                   step="0.01"
                   min="0"
-                  defaultValue="0"
+                  defaultValue={editing?.amount_received ?? 0}
                   className={inputClass}
                 />
               </div>
@@ -260,13 +288,21 @@ export default function ReceivablesManager({
                         {afn(balance)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
-                        {balance > 0 ? (
-                          <RowPayment id={r.id} />
-                        ) : (
-                          <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
-                            Paid
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {balance > 0 ? (
+                            <RowPayment id={r.id} />
+                          ) : (
+                            <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                              Paid
+                            </span>
+                          )}
+                          <button
+                            onClick={() => setMode(r.id)}
+                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                          >
+                            Edit
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

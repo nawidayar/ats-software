@@ -40,7 +40,10 @@ async function businessId(supabase: Awaited<ReturnType<typeof createClient>>) {
   return { id: profile.business_id as string };
 }
 
-export async function addReceivable(
+// Saves a receivable. If the form carries an "id" we UPDATE (edit / correct);
+// otherwise we INSERT a new one. The status (Open / Partial / Paid) is always
+// recalculated from the amounts so the "who owes me" totals stay correct.
+export async function saveReceivable(
   _prevState: ReceivableState,
   formData: FormData,
 ): Promise<ReceivableState> {
@@ -58,8 +61,7 @@ export async function addReceivable(
   const date =
     toText(formData.get("date")) ?? new Date().toISOString().slice(0, 10);
 
-  const { error } = await supabase.from("receivables").insert({
-    business_id: biz.id,
+  const fields = {
     date,
     customer_id: toText(formData.get("customer_id")),
     invoice: toText(formData.get("invoice")),
@@ -67,8 +69,22 @@ export async function addReceivable(
     amount_due: amountDue,
     amount_received: amountReceived,
     status: statusFor(amountDue, amountReceived),
-  });
-  if (error) return { error: error.message };
+  };
+
+  const id = toText(formData.get("id"));
+
+  if (id) {
+    const { error } = await supabase
+      .from("receivables")
+      .update(fields)
+      .eq("id", id);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("receivables")
+      .insert({ business_id: biz.id, ...fields });
+    if (error) return { error: error.message };
+  }
 
   revalidatePath("/receivables");
   return { success: true };

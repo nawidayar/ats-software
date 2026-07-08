@@ -19,7 +19,10 @@ function toText(value: FormDataEntryValue | null): string | null {
   return text === "" ? null : text;
 }
 
-export async function addAsset(
+// Saves an asset. If the form carries an "id" we UPDATE (edit / correct);
+// otherwise we INSERT a new one. The current value (net book value) is
+// recalculated automatically by the database view from these fields.
+export async function saveAsset(
   _prevState: AssetState,
   formData: FormData,
 ): Promise<AssetState> {
@@ -52,8 +55,7 @@ export async function addAsset(
     return { error: "Useful life must be greater than zero." };
   }
 
-  const { error } = await supabase.from("assets").insert({
-    business_id: profile.business_id,
+  const fields = {
     asset_name: name,
     category: toText(formData.get("category")),
     purchase_date:
@@ -61,8 +63,19 @@ export async function addAsset(
       new Date().toISOString().slice(0, 10),
     cost,
     useful_life_years: usefulLife,
-  });
-  if (error) return { error: error.message };
+  };
+
+  const id = toText(formData.get("id"));
+
+  if (id) {
+    const { error } = await supabase.from("assets").update(fields).eq("id", id);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("assets")
+      .insert({ business_id: profile.business_id, ...fields });
+    if (error) return { error: error.message };
+  }
 
   revalidatePath("/assets");
   return { success: true };

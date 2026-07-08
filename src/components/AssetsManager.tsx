@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { addAsset, type AssetState } from "@/app/assets/actions";
+import { saveAsset, type AssetState } from "@/app/assets/actions";
 
 export type AssetRow = {
   id: string;
@@ -30,20 +30,27 @@ function num(value: unknown): number {
 }
 
 export default function AssetsManager({ assets }: { assets: AssetRow[] }) {
-  const [open, setOpen] = useState(false);
-  const [state, formAction, pending] = useActionState(addAsset, initialState);
+  const [state, formAction, pending] = useActionState(saveAsset, initialState);
+  // mode: null = no form, "add" = new asset, otherwise an asset id = edit
+  const [mode, setMode] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
-    if (state.success) setOpen(false);
+    if (state.success) setMode(null);
   }, [state]);
+
+  const editing =
+    mode && mode !== "add"
+      ? (assets.find((a) => a.id === mode) ?? null)
+      : null;
+  const showForm = mode !== null;
 
   return (
     <div>
-      {!open ? (
+      {!showForm ? (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => setMode("add")}
           className="w-full rounded-xl bg-brand py-3.5 text-base font-semibold text-white transition-colors hover:bg-brand-dark sm:w-auto sm:px-6"
         >
           + Add Asset
@@ -51,22 +58,29 @@ export default function AssetsManager({ assets }: { assets: AssetRow[] }) {
       ) : (
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-brand">Add Asset</h2>
+            <h2 className="text-lg font-semibold text-brand">
+              {editing ? "Edit Asset" : "Add Asset"}
+            </h2>
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => setMode(null)}
               className="text-sm font-medium text-gray-500 hover:text-gray-800"
             >
               Cancel
             </button>
           </div>
 
-          <form key={open ? "open" : "closed"} action={formAction} className="space-y-4">
+          <form key={mode} action={formAction} className="space-y-4">
+            {editing && (
+              <input type="hidden" name="id" defaultValue={editing.id} />
+            )}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Asset name</label>
                 <input
                   name="asset_name"
                   required
+                  defaultValue={editing?.asset_name ?? ""}
                   className={inputClass}
                   placeholder="e.g. Delivery motorbike"
                 />
@@ -76,6 +90,7 @@ export default function AssetsManager({ assets }: { assets: AssetRow[] }) {
                 <input
                   name="category"
                   list="asset-categories"
+                  defaultValue={editing?.category ?? ""}
                   className={inputClass}
                   placeholder="e.g. Vehicle"
                 />
@@ -96,7 +111,7 @@ export default function AssetsManager({ assets }: { assets: AssetRow[] }) {
                 <input
                   name="purchase_date"
                   type="date"
-                  defaultValue={today}
+                  defaultValue={editing?.purchase_date ?? today}
                   className={inputClass}
                 />
               </div>
@@ -108,6 +123,7 @@ export default function AssetsManager({ assets }: { assets: AssetRow[] }) {
                   step="0.01"
                   min="0"
                   required
+                  defaultValue={editing?.cost ?? ""}
                   className={inputClass}
                 />
               </div>
@@ -120,6 +136,7 @@ export default function AssetsManager({ assets }: { assets: AssetRow[] }) {
                 type="number"
                 step="0.5"
                 min="0"
+                defaultValue={editing?.useful_life_years ?? ""}
                 className={inputClass}
                 placeholder="e.g. 5"
               />
@@ -162,6 +179,7 @@ export default function AssetsManager({ assets }: { assets: AssetRow[] }) {
                   <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">Cost</th>
                   <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">Yearly depreciation</th>
                   <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">Current value</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">Edit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -188,6 +206,14 @@ export default function AssetsManager({ assets }: { assets: AssetRow[] }) {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-gray-900">
                       {afn(num(a.net_book_value))}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
+                      <button
+                        onClick={() => setMode(a.id)}
+                        className="rounded-lg border border-brand/30 px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand/5"
+                      >
+                        Edit
+                      </button>
                     </td>
                   </tr>
                 ))}
