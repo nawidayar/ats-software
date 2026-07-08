@@ -70,7 +70,7 @@ export default async function SalesPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-4 py-6">
+      <main className="mx-auto w-full max-w-6xl px-4 py-6">
         <SalesManager customers={customers} products={products} sales={sales} />
       </main>
     </div>

@@ -354,7 +354,7 @@ export default function SalesManager({
                   <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">Profit</th>
                   <th className="whitespace-nowrap px-4 py-3 font-semibold">Status</th>
                   <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">Balance</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold">Action</th>
+                  <th className="sticky right-0 z-10 whitespace-nowrap bg-brand px-4 py-3 font-semibold">Edit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -396,7 +396,7 @@ export default function SalesManager({
                       >
                         {afn(balance)}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3">
+                      <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-4 py-3 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
                         <button
                           onClick={() => setMode(s.id)}
                           className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
